@@ -1,6 +1,7 @@
 package pdv_api.models;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -16,7 +17,8 @@ public class Caixa {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    @Column(name = "data_abertura", nullable = false)
+    @CreationTimestamp
+    @Column(name = "data_abertura", nullable = false, updatable = false)
     private LocalDateTime dataAbertura;
 
     @Column(name = "data_fechamento")
