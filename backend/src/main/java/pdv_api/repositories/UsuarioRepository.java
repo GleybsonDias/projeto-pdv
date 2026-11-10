@@ -5,7 +5,5 @@ import org.springframework.stereotype.Repository;
 import pdv_api.models.Usuario;
 
 @Repository
-public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
-    // Não é necessário escrever nada aqui dentro.
-    // O Spring Data JPA já fornece save(), findAll(), findById(), etc.
+public interface UsuarioRepository extends JpaRepository<Usuario, String> {
 }

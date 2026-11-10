@@ -11,7 +11,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/caixas")
-@CrossOrigin(origins = "*")
 public class CaixaController {
 
     @Autowired
@@ -22,9 +21,21 @@ public class CaixaController {
         return caixaService.listarTodos();
     }
 
-    @PostMapping
-    public ResponseEntity<Caixa> criar(@RequestBody Caixa caixa) {
-        Caixa novoCaixa = caixaService.salvar(caixa);
+    // Endpoint exato da documentação: /api/caixas/abrir
+    @PostMapping("/abrir")
+    public ResponseEntity<Caixa> abrir(@RequestBody Caixa caixa) {
+        Caixa novoCaixa = caixaService.abrirCaixa(caixa);
         return ResponseEntity.status(HttpStatus.CREATED).body(novoCaixa);
+    }
+
+    // Endpoint exato da documentação: /api/caixas/{id}/fechar
+    @PutMapping("/{id}/fechar")
+    public ResponseEntity<Caixa> fechar(@PathVariable Long id) {
+        try {
+            Caixa caixaFechado = caixaService.fecharCaixa(id);
+            return ResponseEntity.ok(caixaFechado);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import pdv_api.models.Caixa;
 import pdv_api.repositories.CaixaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,15 +19,22 @@ public class CaixaService {
         return caixaRepository.findAll();
     }
 
-    public Optional<Caixa> buscarPorId(Long id) {
-        return caixaRepository.findById(id);
-    }
-
-    public Caixa salvar(Caixa caixa) {
+    public Caixa abrirCaixa(Caixa caixa) {
+        caixa.setStatus("ABERTO");
+        // A dataAbertura já é gerada automaticamente pelo @CreationTimestamp no Model
         return caixaRepository.save(caixa);
     }
 
-    public void deletar(Long id) {
-        caixaRepository.deleteById(id);
+    public Caixa fecharCaixa(Long id) {
+        Caixa caixa = caixaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Caixa não encontrado"));
+
+        if ("FECHADO".equals(caixa.getStatus())) {
+            throw new RuntimeException("O caixa já se encontra fechado.");
+        }
+
+        caixa.setStatus("FECHADO");
+        caixa.setDataFechamento(LocalDateTime.now());
+        return caixaRepository.save(caixa);
     }
 }

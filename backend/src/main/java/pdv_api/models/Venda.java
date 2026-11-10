@@ -29,6 +29,12 @@ public class Venda {
     @Column(name = "criado_em", updatable = false)
     private LocalDateTime criadoEm;
 
+    @Column(name = "status_pagamento", length = 50)
+    private String statusPagamento; // Ex: PENDENTE, APROVADO, RECUSADO
+
+    @Column(name = "mp_preferencia_id")
+    private String mpPreferenciaId; // Guarda o ID do Checkout Preference gerado pelo Mercado Pago
+
     @PrePersist
     protected void onCreate() {
         this.criadoEm = LocalDateTime.now();
@@ -80,5 +86,21 @@ public class Venda {
 
     public void setCriadoEm(LocalDateTime criadoEm) {
         this.criadoEm = criadoEm;
+    }
+
+    public String getStatusPagamento() {
+        return statusPagamento;
+    }
+
+    public void setStatusPagamento(String statusPagamento) {
+        this.statusPagamento = statusPagamento;
+    }
+
+    public String getMpPreferenciaId() {
+        return mpPreferenciaId;
+    }
+
+    public void setMpPreferenciaId(String mpPreferenciaId) {
+        this.mpPreferenciaId = mpPreferenciaId;
     }
 }

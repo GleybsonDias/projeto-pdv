@@ -14,7 +14,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/produtos")
-@CrossOrigin(origins = "*") // Previne erros de CORS quando o React tentar acessar
 public class ProdutoController {
 
     @Autowired
