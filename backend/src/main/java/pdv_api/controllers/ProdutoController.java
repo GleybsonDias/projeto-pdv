@@ -4,11 +4,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import pdv_api.dtos.ProdutoResponseDTO;
 import pdv_api.models.Produto;
 import pdv_api.services.ProdutoService;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/produtos")
@@ -19,35 +21,38 @@ public class ProdutoController {
     private ProdutoService produtoService;
 
     @GetMapping
-    public List<Produto> listarTodos() {
-        return produtoService.listarTodos();
+    public List<ProdutoResponseDTO> listarTodos() {
+        return produtoService.listarTodos().stream()
+                .map(ProdutoResponseDTO::new)
+                .collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Produto> buscarPorId(@PathVariable Long id) {
+    public ResponseEntity<ProdutoResponseDTO> buscarPorId(@PathVariable Long id) {
         Optional<Produto> produto = produtoService.buscarPorId(id);
-        // Se encontrar retorna 200 OK, se não retorna 404 Not Found
-        return produto.map(ResponseEntity::ok)
-                      .orElseGet(() -> ResponseEntity.notFound().build());
+        // Converte o Produto encontrado para DTO antes de devolver o 200 OK
+        return produto.map(p -> ResponseEntity.ok(new ProdutoResponseDTO(p)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<Produto> criar(@RequestBody Produto produto) {
+    public ResponseEntity<ProdutoResponseDTO> criar(@RequestBody Produto produto) {
         Produto novoProduto = produtoService.salvar(produto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(novoProduto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ProdutoResponseDTO(novoProduto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Produto> atualizar(@PathVariable Long id, @RequestBody Produto produtoAtualizado) {
+    public ResponseEntity<ProdutoResponseDTO> atualizar(@PathVariable Long id, @RequestBody Produto produtoAtualizado) {
         return produtoService.buscarPorId(id).map(produto -> {
             // Atualiza os campos permitidos
             produto.setNome(produtoAtualizado.getNome());
             produto.setCodigoBarras(produtoAtualizado.getCodigoBarras());
             produto.setPrecoVenda(produtoAtualizado.getPrecoVenda());
             produto.setQtdEstoque(produtoAtualizado.getQtdEstoque());
-            
+
             Produto produtoSalvo = produtoService.salvar(produto);
-            return ResponseEntity.ok(produtoSalvo);
+            // Retorna o produto atualizado já convertido em DTO
+            return ResponseEntity.ok(new ProdutoResponseDTO(produtoSalvo));
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
