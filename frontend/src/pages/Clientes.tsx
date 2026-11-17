@@ -1,66 +1,49 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { api } from "../services/api";
 
-// Tipagem
+// Tipagem (ajusta os campos se no teu Java estiverem com nomes diferentes, ex: cpfCnpj em vez de documento)
 interface Cliente {
   id: number;
   nome: string;
   email: string;
   telefone: string;
-  documento: string; // CPF ou CNPJ
+  documento: string;
   status: "Ativo" | "Inativo";
-  ultimaCompra: string;
+  ultimaCompra?: string;
 }
 
-// Dados Fictícios
-const CLIENTES_INICIAIS: Cliente[] = [
-  {
-    id: 1,
-    nome: "João Silva",
-    email: "joao.silva@email.com",
-    telefone: "(11) 98765-4321",
-    documento: "123.456.789-00",
-    status: "Ativo",
-    ultimaCompra: "Hoje, 14:30",
-  },
-  {
-    id: 2,
-    nome: "Maria Oliveira",
-    email: "maria.oliveira@email.com",
-    telefone: "(11) 91234-5678",
-    documento: "987.654.321-11",
-    status: "Ativo",
-    ultimaCompra: "Ontem, 09:15",
-  },
-  {
-    id: 3,
-    nome: "Tech Solutions LTDA",
-    email: "contato@techsol.com.br",
-    telefone: "(11) 4002-8922",
-    documento: "12.345.678/0001-99",
-    status: "Ativo",
-    ultimaCompra: "12 Nov 2026",
-  },
-  {
-    id: 4,
-    nome: "Carlos Mendes",
-    email: "carlos.m@email.com",
-    telefone: "(21) 97777-8888",
-    documento: "456.789.123-22",
-    status: "Inativo",
-    ultimaCompra: "05 Out 2026",
-  },
-];
-
 export default function Clientes() {
-  const [clientes, setClientes] = useState<Cliente[]>(CLIENTES_INICIAIS);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [pesquisa, setPesquisa] = useState("");
 
-  // Filtra a tabela em tempo real com base na pesquisa
+  // Estados da API
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState("");
+
+  // Busca os clientes ao Spring Boot
+  useEffect(() => {
+    const carregarClientes = async () => {
+      try {
+        setLoading(true);
+        // Aponta para o endpoint correto do teu backend
+        const response = await api.get("/api/clientes");
+        setClientes(response.data);
+      } catch (err) {
+        console.error("Erro ao carregar clientes:", err);
+        setErro("Não foi possível carregar a lista de clientes.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    carregarClientes();
+  }, []);
+
   const clientesFiltrados = clientes.filter(
     (c) =>
-      c.nome.toLowerCase().includes(pesquisa.toLowerCase()) ||
-      c.email.toLowerCase().includes(pesquisa.toLowerCase()) ||
-      c.documento.includes(pesquisa),
+      c.nome?.toLowerCase().includes(pesquisa.toLowerCase()) ||
+      c.email?.toLowerCase().includes(pesquisa.toLowerCase()) ||
+      c.documento?.includes(pesquisa),
   );
 
   return (
@@ -118,23 +101,6 @@ export default function Clientes() {
             className="w-full pl-10 pr-4 py-2 bg-slate-950/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm"
           />
         </div>
-
-        <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-            />
-          </svg>
-          Filtros
-        </button>
       </div>
 
       {/* Tabela de Clientes */}
@@ -152,7 +118,52 @@ export default function Clientes() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
-              {clientesFiltrados.length === 0 ? (
+              {/* ESTADO DE LOADING */}
+              {loading && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <svg
+                        className="animate-spin h-8 w-8 text-indigo-500"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      <span className="text-slate-400 font-medium">
+                        A carregar clientes...
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {/* ESTADO DE ERRO */}
+              {!loading && erro && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl inline-block">
+                      {erro}
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {/* LISTAGEM DE CLIENTES */}
+              {!loading && !erro && clientesFiltrados.length === 0 ? (
                 <tr>
                   <td
                     colSpan={6}
@@ -162,6 +173,8 @@ export default function Clientes() {
                   </td>
                 </tr>
               ) : (
+                !loading &&
+                !erro &&
                 clientesFiltrados.map((cliente) => (
                   <tr
                     key={cliente.id}
@@ -178,10 +191,10 @@ export default function Clientes() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-slate-400">
-                      {cliente.documento}
+                      {cliente.documento || "-"}
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-400">
-                      {cliente.telefone}
+                      {cliente.telefone || "-"}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span
@@ -194,11 +207,11 @@ export default function Clientes() {
                         <span
                           className={`w-1.5 h-1.5 rounded-full ${cliente.status === "Ativo" ? "bg-emerald-400" : "bg-slate-500"}`}
                         ></span>
-                        {cliente.status}
+                        {cliente.status || "Ativo"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-400">
-                      {cliente.ultimaCompra}
+                      {cliente.ultimaCompra || "-"}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

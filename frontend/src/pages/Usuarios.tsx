@@ -1,69 +1,57 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { api } from "../services/api";
 
-// Tipagem
+// Tipagem (ajusta se os campos no teu Java tiverem nomes diferentes, ex: role em vez de cargo)
 interface Usuario {
   id: number;
   nome: string;
   email: string;
   cargo: string;
   status: "Ativo" | "Inativo";
-  ultimoAcesso: string;
+  ultimoAcesso?: string;
 }
 
-// Dados Fictícios
-const USUARIOS_INICIAIS: Usuario[] = [
-  {
-    id: 1,
-    nome: "Gleybson Dias",
-    email: "admin@pdv.com",
-    cargo: "Administrador",
-    status: "Ativo",
-    ultimoAcesso: "Agora mesmo",
-  },
-  {
-    id: 2,
-    nome: "Ana Costa",
-    email: "ana.gerente@pdv.com",
-    cargo: "Gerente",
-    status: "Ativo",
-    ultimoAcesso: "Hoje, 08:30",
-  },
-  {
-    id: 3,
-    nome: "Carlos Mendes",
-    email: "carlos.caixa@pdv.com",
-    cargo: "Operador de Caixa",
-    status: "Ativo",
-    ultimoAcesso: "Ontem, 18:45",
-  },
-  {
-    id: 4,
-    nome: "Sofia Lima",
-    email: "sofia.caixa@pdv.com",
-    cargo: "Operador de Caixa",
-    status: "Inativo",
-    ultimoAcesso: "10 Nov 2026",
-  },
-];
-
 export default function Usuarios() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>(USUARIOS_INICIAIS);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [pesquisa, setPesquisa] = useState("");
 
-  // Filtra a tabela em tempo real com base na pesquisa
+  // Estados da API
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState("");
+
+  // Busca os utilizadores ao Spring Boot
+  useEffect(() => {
+    const carregarUsuarios = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get("/api/usuarios");
+        setUsuarios(response.data);
+      } catch (err) {
+        console.error("Erro ao carregar utilizadores:", err);
+        setErro("Não foi possível carregar a lista de utilizadores.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    carregarUsuarios();
+  }, []);
+
   const usuariosFiltrados = usuarios.filter(
     (u) =>
-      u.nome.toLowerCase().includes(pesquisa.toLowerCase()) ||
-      u.email.toLowerCase().includes(pesquisa.toLowerCase()) ||
-      u.cargo.toLowerCase().includes(pesquisa.toLowerCase()),
+      u.nome?.toLowerCase().includes(pesquisa.toLowerCase()) ||
+      u.email?.toLowerCase().includes(pesquisa.toLowerCase()) ||
+      u.cargo?.toLowerCase().includes(pesquisa.toLowerCase()),
   );
 
-  // Função auxiliar para dar cores diferentes aos cargos
-  const getCorCargo = (cargo: string) => {
-    switch (cargo) {
-      case "Administrador":
+  const getCorCargo = (cargo?: string) => {
+    if (!cargo) return "bg-slate-800 text-slate-300 border-slate-700";
+
+    switch (cargo.toLowerCase()) {
+      case "administrador":
+      case "admin":
         return "bg-purple-500/10 text-purple-400 border-purple-500/20";
-      case "Gerente":
+      case "gerente":
         return "bg-blue-500/10 text-blue-400 border-blue-500/20";
       default:
         return "bg-slate-800 text-slate-300 border-slate-700";
@@ -101,7 +89,7 @@ export default function Usuarios() {
         </button>
       </div>
 
-      {/* Barra de Ferramentas (Pesquisa e Filtros) */}
+      {/* Barra de Ferramentas */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-t-2xl p-4 flex gap-4 items-center">
         <div className="flex-1 relative max-w-md">
           <svg
@@ -125,23 +113,6 @@ export default function Usuarios() {
             className="w-full pl-10 pr-4 py-2 bg-slate-950/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm"
           />
         </div>
-
-        <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-            />
-          </svg>
-          Filtros
-        </button>
       </div>
 
       {/* Tabela de Usuários */}
@@ -158,7 +129,52 @@ export default function Usuarios() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
-              {usuariosFiltrados.length === 0 ? (
+              {/* ESTADO DE LOADING */}
+              {loading && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <svg
+                        className="animate-spin h-8 w-8 text-indigo-500"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      <span className="text-slate-400 font-medium">
+                        A carregar utilizadores...
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {/* ESTADO DE ERRO */}
+              {!loading && erro && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center">
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl inline-block">
+                      {erro}
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {/* LISTAGEM DE USUÁRIOS */}
+              {!loading && !erro && usuariosFiltrados.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
@@ -168,6 +184,8 @@ export default function Usuarios() {
                   </td>
                 </tr>
               ) : (
+                !loading &&
+                !erro &&
                 usuariosFiltrados.map((usuario) => (
                   <tr
                     key={usuario.id}
@@ -176,11 +194,13 @@ export default function Usuarios() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 font-bold border border-slate-700">
-                          {usuario.nome.charAt(0)}
+                          {usuario.nome
+                            ? usuario.nome.charAt(0).toUpperCase()
+                            : "?"}
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-semibold text-slate-200">
-                            {usuario.nome}
+                            {usuario.nome || "Sem nome"}
                           </span>
                           <span className="text-xs text-slate-500 mt-0.5">
                             {usuario.email}
@@ -192,25 +212,37 @@ export default function Usuarios() {
                       <span
                         className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${getCorCargo(usuario.cargo)}`}
                       >
-                        {usuario.cargo}
+                        {usuario.cargo || "Operador"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
-                          usuario.status === "Ativo"
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                            : "bg-slate-800 text-slate-400 border-slate-700"
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${usuario.status === "Ativo" ? "bg-emerald-400" : "bg-slate-500"}`}
-                        ></span>
-                        {usuario.status}
-                      </span>
+                      {(() => {
+                        // Verificação robusta: aceita null, 'ATIVO', 'ativo', 'Ativo' ou booleano (true)
+                        const isAtivo =
+                          !usuario.status ||
+                          String(usuario.status).toUpperCase() === "ATIVO" ||
+                          usuario.status === true;
+
+                        const textoStatus = isAtivo ? "Ativo" : "Inativo";
+
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                              isAtivo
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                : "bg-slate-800 text-slate-400 border-slate-700"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${isAtivo ? "bg-emerald-400" : "bg-slate-500"}`}
+                            ></span>
+                            {textoStatus}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-400">
-                      {usuario.ultimoAcesso}
+                      {usuario.ultimoAcesso || "-"}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -232,7 +264,6 @@ export default function Usuarios() {
                             />
                           </svg>
                         </button>
-                        {/* Botão extra para resetar password */}
                         <button
                           className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
                           title="Redefinir Senha"

@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { api } from "../services/api"; // Importa a nossa API com o token automático
 
-// Tipagem
 interface Produto {
   id: number;
   codigo: string;
@@ -11,55 +11,6 @@ interface Produto {
   status: "Ativo" | "Inativo";
 }
 
-// Dados Fictícios
-const PRODUTOS_INICIAIS: Produto[] = [
-  {
-    id: 1,
-    codigo: "PRD-001",
-    nome: "Hambúrguer Clássico",
-    categoria: "Lanches",
-    preco: 25.9,
-    stock: 45,
-    status: "Ativo",
-  },
-  {
-    id: 2,
-    codigo: "PRD-002",
-    nome: "Refrigerante Cola",
-    categoria: "Bebidas",
-    preco: 6.5,
-    stock: 120,
-    status: "Ativo",
-  },
-  {
-    id: 3,
-    codigo: "PRD-003",
-    nome: "Batata Frita Média",
-    categoria: "Lanches",
-    preco: 12.0,
-    stock: 85,
-    status: "Ativo",
-  },
-  {
-    id: 4,
-    codigo: "PRD-004",
-    nome: "Cheesecake",
-    categoria: "Sobremesas",
-    preco: 15.0,
-    stock: 12,
-    status: "Ativo",
-  },
-  {
-    id: 5,
-    codigo: "PRD-005",
-    nome: "Água Mineral",
-    categoria: "Bebidas",
-    preco: 4.0,
-    stock: 0,
-    status: "Inativo",
-  },
-];
-
 const formatarMoeda = (valor: number) => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -68,14 +19,38 @@ const formatarMoeda = (valor: number) => {
 };
 
 export default function Produtos() {
-  const [produtos, setProdutos] = useState<Produto[]>(PRODUTOS_INICIAIS);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
   const [pesquisa, setPesquisa] = useState("");
 
-  // Filtra a tabela em tempo real com base na pesquisa
+  // Novos estados para gerir a comunicação com a API
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState("");
+
+  // Busca os dados ao Spring Boot quando a página carrega
+  useEffect(() => {
+    const carregarProdutos = async () => {
+      try {
+        setLoading(true);
+        // NOTA: Se no teu Spring Boot a rota for /api/produtos, ajusta aqui!
+        const response = await api.get("/api/produtos");
+        setProdutos(response.data);
+      } catch (err) {
+        console.error("Erro ao carregar produtos:", err);
+        setErro(
+          "Não foi possível carregar os produtos. Verifica se o backend está a correr.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    carregarProdutos();
+  }, []);
+
   const produtosFiltrados = produtos.filter(
     (p) =>
       p.nome.toLowerCase().includes(pesquisa.toLowerCase()) ||
-      p.codigo.toLowerCase().includes(pesquisa.toLowerCase()),
+      (p.codigo && p.codigo.toLowerCase().includes(pesquisa.toLowerCase())),
   );
 
   return (
@@ -109,7 +84,7 @@ export default function Produtos() {
         </button>
       </div>
 
-      {/* Barra de Ferramentas (Pesquisa e Filtros) */}
+      {/* Barra de Ferramentas */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-t-2xl p-4 flex gap-4 items-center">
         <div className="flex-1 relative max-w-md">
           <svg
@@ -133,23 +108,6 @@ export default function Produtos() {
             className="w-full pl-10 pr-4 py-2 bg-slate-950/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm"
           />
         </div>
-
-        <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-            />
-          </svg>
-          Filtros
-        </button>
       </div>
 
       {/* Tabela de Produtos */}
@@ -168,7 +126,52 @@ export default function Produtos() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
-              {produtosFiltrados.length === 0 ? (
+              {/* ESTADO DE LOADING */}
+              {loading && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <svg
+                        className="animate-spin h-8 w-8 text-indigo-500"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      <span className="text-slate-400 font-medium">
+                        A carregar produtos do servidor...
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {/* ESTADO DE ERRO */}
+              {!loading && erro && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl inline-block">
+                      {erro}
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {/* DADOS VAZIOS OU LISTAGEM (APÓS CARREGAR SEM ERROS) */}
+              {!loading && !erro && produtosFiltrados.length === 0 ? (
                 <tr>
                   <td
                     colSpan={7}
@@ -178,6 +181,8 @@ export default function Produtos() {
                   </td>
                 </tr>
               ) : (
+                !loading &&
+                !erro &&
                 produtosFiltrados.map((produto) => (
                   <tr
                     key={produto.id}
@@ -217,7 +222,7 @@ export default function Produtos() {
                         <span
                           className={`w-1.5 h-1.5 rounded-full ${produto.status === "Ativo" ? "bg-emerald-400" : "bg-slate-500"}`}
                         ></span>
-                        {produto.status}
+                        {produto.status || "Ativo"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
