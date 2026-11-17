@@ -21,6 +21,13 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
+        // === NOVA REGRA PARA O CORS (PREFLIGHT) ===
+        // Se for o navegador a fazer o pedido invisível de segurança (OPTIONS), deixa passar livremente
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // 1. Extrai o cabeçalho "Authorization" do pedido que vem do React
         String header = request.getHeader("Authorization");
 
