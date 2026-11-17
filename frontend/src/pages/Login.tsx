@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { auth } from "../assets/config/firebase";
 
 export default function Login() {
@@ -9,6 +9,16 @@ export default function Login() {
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Escuta o Firebase: Se o utilizador já tiver sessão iniciada, redireciona-o
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        navigate("/");
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +56,6 @@ export default function Login() {
       <div className="relative z-10 w-full max-w-md p-10 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-2xl shadow-2xl">
         <div className="text-center mb-10">
           <div className="flex justify-center mb-4">
-            {/* Ícone de placeholder para o logo da empresa */}
             <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <svg
                 className="w-6 h-6 text-white"
