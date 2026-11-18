@@ -75,7 +75,16 @@
 			<artifactId>firebase-admin</artifactId>
 			<version>9.2.0</version> <!-- Confirma se é a versão mais recente/estável -->
 		</dependency>
+
+		<!-- SDK oficial do Mercado Pago para Java -->
+		<dependency>
+			<groupId>com.mercadopago</groupId>
+			<artifactId>sdk-java</artifactId>
+			<version>2.1.2</version>
+		</dependency>
 	</dependencies>
+
+
 
 	<build>
 		<plugins>
