@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../services/api";
+import { toast } from "react-hot-toast";
 
 // Importação dos nossos novos componentes visuais!
 import CaixaFechado from "../components/pdv/CaixaFechado";
@@ -176,10 +177,10 @@ export default function FrenteCaixa() {
       await Promise.all(promessasItens);
       setModalPagamento(false);
       setCarrinho([]);
-      alert("Venda finalizada com sucesso! 🎉");
+      toast.success("Venda finalizada com sucesso! 🎉");
     } catch (error: any) {
       console.error("Erro ao finalizar venda:", error);
-      alert("Erro ao finalizar a venda. Verifica a consola.");
+      toast.error("Erro ao finalizar a venda.");
     } finally {
       setProcessando(false);
     }
