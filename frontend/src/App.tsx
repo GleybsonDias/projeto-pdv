@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import PrivateRoute from "./components/PrivateRoute";
 import MainLayout from "./layouts/MainLayout";
 import { AuthProvider } from "./contexts/AuthContext";
+import { Toaster } from "react-hot-toast";
 
 // Importação das novas páginas
 import FrenteCaixa from "./pages/FrenteCaixa";
@@ -25,6 +26,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Toaster position="top-right" />
         <Routes>
           <Route path="/login" element={<Login />} />
 
