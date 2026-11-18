@@ -199,7 +199,7 @@ export default function Usuarios() {
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-900/50">
+              <tr className="bg-slate-950/50 border-b border-slate-800 text-xs uppercase tracking-wider text-slate-400 font-semibold">
                 <th className="p-4 text-sm font-semibold text-slate-400 uppercase tracking-wider">
                   Nome
                 </th>
