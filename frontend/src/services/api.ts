@@ -1,24 +1,20 @@
 import axios from "axios";
-import { auth } from "../assets/config/firebase"; // Ajusta este caminho se a tua config do firebase estiver noutra pasta
+import { getAuth } from "firebase/auth";
 
 export const api = axios.create({
   baseURL: "http://localhost:8080", // O endereço do teu Spring Boot
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
-// Intercetor de Requisição: Injeta o token do Firebase automaticamente
+// Interceptor: Antes de qualquer pedido ir para o backend, ele passa por aqui
 api.interceptors.request.use(
   async (config) => {
-    // Pega no utilizador atualmente logado no Firebase
+    const auth = getAuth();
     const user = auth.currentUser;
 
     if (user) {
-      // Pede o token fresco ao Firebase (gere automaticamente a renovação se estiver expirado)
+      // O getIdToken() é mágico: ele pega o token atual. Se estiver expirado,
+      // ele pede um novo ao Firebase automaticamente antes de devolver!
       const token = await user.getIdToken();
-
-      // Adiciona o token ao cabeçalho de Autorização
       config.headers.Authorization = `Bearer ${token}`;
     }
 

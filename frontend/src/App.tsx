@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import PrivateRoute from "./components/PrivateRoute";
 import MainLayout from "./layouts/MainLayout";
+import { AuthProvider } from "./contexts/AuthContext";
 
 // Importação das novas páginas
 import FrenteCaixa from "./pages/FrenteCaixa";
@@ -22,64 +23,66 @@ const Dashboard = () => {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
 
-        {/* Rotas Protegidas */}
-        <Route
-          path="/"
-          element={
-            <PrivateRoute>
-              <MainLayout>
-                <Dashboard />
-              </MainLayout>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/pdv"
-          element={
-            <PrivateRoute>
-              <MainLayout>
-                <FrenteCaixa />
-              </MainLayout>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/produtos"
-          element={
-            <PrivateRoute>
-              <MainLayout>
-                <Produtos />
-              </MainLayout>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/clientes"
-          element={
-            <PrivateRoute>
-              <MainLayout>
-                <Clientes />
-              </MainLayout>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/usuarios"
-          element={
-            <PrivateRoute>
-              <MainLayout>
-                <Usuarios />
-              </MainLayout>
-            </PrivateRoute>
-          }
-        />
+          {/* Rotas Protegidas */}
+          <Route
+            path="/"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <Dashboard />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/pdv"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <FrenteCaixa />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/produtos"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <Produtos />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/clientes"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <Clientes />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/usuarios"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <Usuarios />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
