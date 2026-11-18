@@ -1,13 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { api } from "../../services/api";
 import toast from "react-hot-toast";
+
+interface Cliente {
+  id: number;
+  nome: string;
+  cpf: string;
+  telefone?: string;
+}
 
 interface ModalCheckoutProps {
   total: number;
   formaPagamento: string;
   setFormaPagamento: (forma: string) => void;
   setModalPagamento: (aberto: boolean) => void;
-  handleFinalizarVenda: () => void;
+  handleFinalizarVenda: (clienteId?: number | null) => void;
   processando: boolean;
 }
 
@@ -33,6 +40,32 @@ export default function ModalCheckout({
     copiaECola?: string;
   } | null>(null);
   const [linkPagamento, setLinkPagamento] = useState<string | null>(null);
+
+  // ESTADOS DE SELEÇÃO DE CLIENTE
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [buscaCliente, setBuscaCliente] = useState("");
+  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(
+    null,
+  );
+  const [mostrarListaClientes, setMostrarListaClientes] = useState(false);
+
+  useEffect(() => {
+    const carregarClientes = async () => {
+      try {
+        const response = await api.get("/api/clientes");
+        setClientes(response.data);
+      } catch (error) {
+        console.error("Erro ao carregar clientes no checkout:", error);
+      }
+    };
+    carregarClientes();
+  }, []);
+
+  const clientesFiltrados = clientes.filter(
+    (c) =>
+      c.nome?.toLowerCase().includes(buscaCliente.toLowerCase()) ||
+      c.cpf?.includes(buscaCliente),
+  );
 
   const handleGerarPix = async () => {
     try {
@@ -115,8 +148,8 @@ export default function ModalCheckout({
       return;
     }
 
-    // Se o Pix ou Link já foram gerados (ou se for DINHEIRO / CARTAO_FISICO), finaliza a venda no PDV
-    handleFinalizarVenda();
+    // Passa o ID do cliente selecionado (ou null se for Consumidor Final)
+    handleFinalizarVenda(clienteSelecionado ? clienteSelecionado.id : null);
   };
 
   return (
@@ -151,6 +184,80 @@ export default function ModalCheckout({
             <p className="text-4xl font-bold text-white">
               {formatarMoeda(total)}
             </p>
+          </div>
+
+          {/* SELETOR DE CLIENTE (OPCIONAL) */}
+          <div className="mb-5 relative">
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Cliente na Nota / Venda (Opcional)
+            </label>
+
+            {clienteSelecionado ? (
+              <div className="flex items-center justify-between px-3.5 py-2.5 bg-indigo-500/10 border border-indigo-500/40 rounded-xl">
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    {clienteSelecionado.nome}
+                  </p>
+                  {clienteSelecionado.cpf && (
+                    <p className="text-xs text-indigo-300 font-mono">
+                      CPF: {clienteSelecionado.cpf}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClienteSelecionado(null);
+                    setBuscaCliente("");
+                  }}
+                  className="text-xs text-slate-400 hover:text-red-400 font-medium px-2 py-1 rounded hover:bg-slate-800 transition-colors"
+                >
+                  Remover
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Consumidor Final (Digite nome ou CPF para buscar...)"
+                  value={buscaCliente}
+                  onFocus={() => setMostrarListaClientes(true)}
+                  onBlur={() =>
+                    setTimeout(() => setMostrarListaClientes(false), 180)
+                  }
+                  onChange={(e) => {
+                    setBuscaCliente(e.target.value);
+                    setMostrarListaClientes(true);
+                  }}
+                  className="w-full px-3.5 py-2.5 bg-slate-950/50 border border-slate-700 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                />
+
+                {mostrarListaClientes && clientesFiltrados.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full max-h-44 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-xl divide-y divide-slate-800">
+                    {clientesFiltrados.map((c) => (
+                      <button
+                        type="button"
+                        key={c.id}
+                        onClick={() => {
+                          setClienteSelecionado(c);
+                          setMostrarListaClientes(false);
+                        }}
+                        className="w-full text-left px-3.5 py-2.5 hover:bg-slate-800 transition-colors flex justify-between items-center"
+                      >
+                        <span className="text-sm font-medium text-slate-200">
+                          {c.nome}
+                        </span>
+                        {c.cpf && (
+                          <span className="text-xs text-slate-400 font-mono">
+                            {c.cpf}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {formaPagamento === "PIX" && dadosPix ? (
@@ -212,8 +319,8 @@ export default function ModalCheckout({
               </div>
             </div>
           ) : (
-            <div className="space-y-3 mb-6">
-              <label className="block text-sm font-medium text-slate-400 mb-2">
+            <div className="space-y-2.5 mb-6">
+              <label className="block text-xs font-medium text-slate-400 mb-1">
                 Forma de Pagamento
               </label>
 
@@ -229,7 +336,7 @@ export default function ModalCheckout({
                     setDadosPix(null);
                     setLinkPagamento(null);
                   }}
-                  className={`flex items-center gap-3 p-3.5 rounded-xl cursor-pointer border transition-all ${
+                  className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${
                     formaPagamento === metodo.id
                       ? "bg-indigo-500/10 border-indigo-500 text-indigo-400"
                       : "bg-slate-950/50 border-slate-700 text-slate-300 hover:bg-slate-800"

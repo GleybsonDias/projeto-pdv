@@ -22,8 +22,12 @@ public class ItemVendaController {
     }
 
     @PostMapping
-    public ResponseEntity<ItemVenda> criar(@RequestBody ItemVenda itemVenda) {
-        ItemVenda novoItem = itemVendaService.salvar(itemVenda);
-        return ResponseEntity.status(HttpStatus.CREATED).body(novoItem);
+    public ResponseEntity<?> criar(@RequestBody ItemVenda itemVenda) {
+        try {
+            ItemVenda novoItem = itemVendaService.salvar(itemVenda);
+            return ResponseEntity.status(HttpStatus.CREATED).body(novoItem);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

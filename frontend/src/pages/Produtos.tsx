@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../services/api";
+import toast from "react-hot-toast";
 
 interface Produto {
   id: number;
@@ -22,10 +23,17 @@ export default function Produtos() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
 
-  // ESTADOS DO MODAL
+  // ESTADOS DO MODAL DE CRIAR / EDITAR
   const [modalAberto, setModalAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
-  const [erroModal, setErroModal] = useState(""); // Novo estado para erros de validação
+  const [erroModal, setErroModal] = useState("");
+  const [produtoEditando, setProdutoEditando] = useState<Produto | null>(null);
+
+  // ESTADOS DO MODAL DE EXCLUSÃO
+  const [produtoParaExcluir, setProdutoParaExcluir] = useState<Produto | null>(
+    null,
+  );
+  const [excluindo, setExcluindo] = useState(false);
 
   const [formData, setFormData] = useState({
     codigo: "",
@@ -51,17 +59,38 @@ export default function Produtos() {
     carregarProdutos();
   }, []);
 
-  // Lógica para abrir o modal limpo
-  const abrirModal = () => {
+  // Abrir modal para NOVO produto
+  const abrirModalNovo = () => {
+    setProdutoEditando(null);
     setFormData({ codigo: "", nome: "", preco: "", stock: "" });
     setErroModal("");
     setModalAberto(true);
   };
 
-  // VALIDAÇÕES E POST
+  // Abrir modal preenchido para EDITAR produto
+  const abrirModalEditar = (produto: Produto) => {
+    setProdutoEditando(produto);
+    setFormData({
+      codigo: produto.codigoBarras || "",
+      nome: produto.nome || "",
+      preco:
+        produto.preco !== undefined && produto.preco !== null
+          ? produto.preco.toString().replace(".", ",")
+          : "",
+      stock:
+        produto.quantidadeEstoque !== undefined &&
+        produto.quantidadeEstoque !== null
+          ? produto.quantidadeEstoque.toString()
+          : "0",
+    });
+    setErroModal("");
+    setModalAberto(true);
+  };
+
+  // VALIDAÇÕES, POST (Criar) E PUT (Editar)
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErroModal(""); // Limpa erros antigos
+    setErroModal("");
 
     // 1. Validação do Nome (Máximo 150 caracteres)
     const nomeLimpo = formData.nome.trim();
@@ -79,8 +108,10 @@ export default function Produtos() {
       return;
     }
 
-    // 3. Validação de Código Duplicado
-    const codigoJaExiste = produtos.some((p) => p.codigoBarras === codigoLimpo);
+    // 3. Validação de Código Duplicado (ignora o próprio produto caso esteja editando)
+    const codigoJaExiste = produtos.some(
+      (p) => p.codigoBarras === codigoLimpo && p.id !== produtoEditando?.id,
+    );
     if (codigoJaExiste) {
       setErroModal(
         "Este código de barras já está cadastrado em outro produto!",
@@ -88,8 +119,7 @@ export default function Produtos() {
       return;
     }
 
-    // 4. Validação do Preço (Aceitar vírgula ou ponto e converter para float)
-    // Substitui vírgula por ponto para o JavaScript conseguir converter
+    // 4. Validação do Preço
     const precoNumerico = Number(formData.preco.toString().replace(",", "."));
     if (isNaN(precoNumerico) || precoNumerico <= 0) {
       setErroModal(
@@ -113,15 +143,23 @@ export default function Produtos() {
         codigoBarras: codigoLimpo,
         precoVenda: precoNumerico,
         qtdEstoque: estoqueNumerico,
+        preco: precoNumerico,
+        quantidadeEstoque: estoqueNumerico,
       };
 
-      await api.post("/api/produtos", payload);
+      if (produtoEditando) {
+        await api.put(`/api/produtos/${produtoEditando.id}`, payload);
+        toast.success("Produto atualizado com sucesso!");
+      } else {
+        await api.post("/api/produtos", payload);
+        toast.success("Produto cadastrado com sucesso!");
+      }
 
       setModalAberto(false);
-      carregarProdutos(); // Recarrega a grelha
+      setProdutoEditando(null);
+      carregarProdutos();
     } catch (error: any) {
       console.error("Erro ao salvar produto:", error);
-      // Se der 403, avisa o utilizador que o token pode ter expirado
       if (error.response && error.response.status === 403) {
         setErroModal(
           "Acesso negado. A tua sessão pode ter expirado. Atualiza a página (F5) e tenta novamente.",
@@ -131,6 +169,37 @@ export default function Produtos() {
       }
     } finally {
       setSalvando(false);
+    }
+  };
+
+  // EXCLUSÃO DE PRODUTO (DELETE)
+  const handleConfirmarExclusao = async () => {
+    if (!produtoParaExcluir) return;
+
+    try {
+      setExcluindo(true);
+      await api.delete(`/api/produtos/${produtoParaExcluir.id}`);
+      toast.success(`"${produtoParaExcluir.nome}" excluído com sucesso!`);
+      setProdutoParaExcluir(null);
+      carregarProdutos();
+    } catch (error: any) {
+      console.error("Erro ao excluir produto:", error);
+      const mensagemBackend =
+        typeof error.response?.data === "string" ? error.response.data : null;
+
+      if (error.response?.status === 409) {
+        toast.error(
+          mensagemBackend ||
+            "Este produto não pode ser excluído pois já possui vendas vinculadas.",
+        );
+        setProdutoParaExcluir(null);
+      } else if (error.response?.status === 403) {
+        toast.error("Sessão expirada. Atualize a página e tente novamente.");
+      } else {
+        toast.error(mensagemBackend || "Não foi possível excluir o produto.");
+      }
+    } finally {
+      setExcluindo(false);
     }
   };
 
@@ -154,7 +223,7 @@ export default function Produtos() {
         </div>
 
         <button
-          onClick={abrirModal}
+          onClick={abrirModalNovo}
           className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-2"
         >
           <svg
@@ -288,6 +357,7 @@ export default function Produtos() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
+                          onClick={() => abrirModalEditar(produto)}
                           className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded transition-colors"
                           title="Editar"
                         >
@@ -306,6 +376,7 @@ export default function Produtos() {
                           </svg>
                         </button>
                         <button
+                          onClick={() => setProdutoParaExcluir(produto)}
                           className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                           title="Eliminar"
                         >
@@ -333,15 +404,19 @@ export default function Produtos() {
         </div>
       </div>
 
+      {/* MODAL DE CRIAR / EDITAR PRODUTO */}
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
             <div className="flex justify-between items-center p-6 border-b border-slate-800">
               <h2 className="text-xl font-bold text-white">
-                Cadastrar Produto
+                {produtoEditando ? "Editar Produto" : "Cadastrar Produto"}
               </h2>
               <button
-                onClick={() => setModalAberto(false)}
+                onClick={() => {
+                  setModalAberto(false);
+                  setProdutoEditando(null);
+                }}
                 className="text-slate-400 hover:text-white transition-colors"
               >
                 <svg
@@ -361,7 +436,6 @@ export default function Produtos() {
             </div>
 
             <form onSubmit={handleSalvar} className="p-6 space-y-4">
-              {/* EXIBIÇÃO DE ERRO DE VALIDAÇÃO AQUI */}
               {erroModal && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-sm mb-4 flex items-start gap-2">
                   <svg
@@ -388,7 +462,7 @@ export default function Produtos() {
                 <input
                   required
                   type="text"
-                  maxLength={150} // Limite HTML nativo
+                  maxLength={150}
                   value={formData.nome}
                   onChange={(e) =>
                     setFormData({ ...formData, nome: e.target.value })
@@ -405,7 +479,7 @@ export default function Produtos() {
                 <input
                   required
                   type="text"
-                  maxLength={13} // Limite HTML nativo para o padrão Varejo
+                  maxLength={13}
                   value={formData.codigo}
                   onChange={(e) =>
                     setFormData({ ...formData, codigo: e.target.value })
@@ -425,8 +499,8 @@ export default function Produtos() {
                   </label>
                   <input
                     required
-                    type="text" // Alterado para text para aceitar vírgulas livremente
-                    inputMode="decimal" // Mostra teclado numérico no mobile
+                    type="text"
+                    inputMode="decimal"
                     value={formData.preco}
                     onChange={(e) =>
                       setFormData({ ...formData, preco: e.target.value })
@@ -456,7 +530,10 @@ export default function Produtos() {
               <div className="pt-4 flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setModalAberto(false)}
+                  onClick={() => {
+                    setModalAberto(false);
+                    setProdutoEditando(null);
+                  }}
                   className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition-colors"
                 >
                   Cancelar
@@ -466,10 +543,67 @@ export default function Produtos() {
                   disabled={salvando}
                   className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {salvando ? "A guardar..." : "Guardar Produto"}
+                  {salvando
+                    ? "A guardar..."
+                    : produtoEditando
+                      ? "Salvar Alterações"
+                      : "Guardar Produto"}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      {produtoParaExcluir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4 text-red-400">
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </div>
+
+            <h3 className="text-lg font-bold text-white mb-2">
+              Excluir Produto?
+            </h3>
+            <p className="text-sm text-slate-400 mb-6">
+              Tem certeza que deseja excluir{" "}
+              <span className="text-white font-semibold">
+                "{produtoParaExcluir.nome}"
+              </span>
+              ? Esta ação não poderá ser desfeita.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                disabled={excluindo}
+                onClick={() => setProdutoParaExcluir(null)}
+                className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={excluindo}
+                onClick={handleConfirmarExclusao}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+              >
+                {excluindo ? "Excluindo..." : "Sim, Excluir"}
+              </button>
+            </div>
           </div>
         </div>
       )}

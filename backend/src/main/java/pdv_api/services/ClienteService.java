@@ -6,7 +6,6 @@ import pdv_api.models.Cliente;
 import pdv_api.repositories.ClienteRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ClienteService {
@@ -18,12 +17,27 @@ public class ClienteService {
         return clienteRepository.findAll();
     }
 
-    public Optional<Cliente> buscarPorId(Long id) {
-        return clienteRepository.findById(id);
+    public Cliente salvar(Cliente cliente) {
+        if (cliente.getCpf() != null && cliente.getCpf().isBlank()) {
+            cliente.setCpf(null);
+        }
+        return clienteRepository.save(cliente);
     }
 
-    public Cliente salvar(Cliente cliente) {
-        return clienteRepository.save(cliente);
+    public Cliente atualizar(Long id, Cliente dadosAtualizados) {
+        Cliente clienteExistente = clienteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cliente não encontrado."));
+
+        clienteExistente.setNome(dadosAtualizados.getNome());
+
+        String cpfLimpo = (dadosAtualizados.getCpf() != null && !dadosAtualizados.getCpf().isBlank())
+                ? dadosAtualizados.getCpf().trim()
+                : null;
+        clienteExistente.setCpf(cpfLimpo);
+
+        clienteExistente.setTelefone(dadosAtualizados.getTelefone());
+
+        return clienteRepository.save(clienteExistente);
     }
 
     public void deletar(Long id) {

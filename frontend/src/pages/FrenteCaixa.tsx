@@ -152,8 +152,23 @@ export default function FrenteCaixa() {
     });
   };
 
-  const handleFinalizarVenda = async () => {
-    if (!caixaAtivo) return alert("Nenhum caixa aberto!");
+  const handleFinalizarVenda = async (clienteId?: number | null) => {
+    if (!caixaAtivo) {
+      toast.error("Nenhum caixa aberto!");
+      return;
+    }
+
+    // 1. Verifica antes de criar a venda se algum item do carrinho ultrapassa o estoque disponível
+    const itemSemEstoque = carrinho.find(
+      (item) => item.quantidade > item.produto.quantidadeEstoque,
+    );
+
+    if (itemSemEstoque) {
+      toast.error(
+        `Estoque insuficiente para "${itemSemEstoque.produto.nome}". Disponível: ${itemSemEstoque.produto.quantidadeEstoque} un.`,
+      );
+      return;
+    }
 
     try {
       setProcessando(true);
@@ -162,6 +177,8 @@ export default function FrenteCaixa() {
         valorTotal: total,
         formaPagamento: formaPagamento,
         statusPagamento: "APROVADO",
+        clienteId: clienteId ?? null,
+        cliente: clienteId ? { id: clienteId } : null,
       });
       const vendaCriada = responseVenda.data;
 
@@ -175,12 +192,30 @@ export default function FrenteCaixa() {
       });
 
       await Promise.all(promessasItens);
+
+      // 2. Atualiza o estoque local na tela do PDV imediatamente
+      setProdutos((produtosAtuais) =>
+        produtosAtuais.map((prod) => {
+          const itemVendido = carrinho.find((i) => i.produto.id === prod.id);
+          if (itemVendido) {
+            return {
+              ...prod,
+              quantidadeEstoque:
+                prod.quantidadeEstoque - itemVendido.quantidade,
+            };
+          }
+          return prod;
+        }),
+      );
+
       setModalPagamento(false);
       setCarrinho([]);
       toast.success("Venda finalizada com sucesso! 🎉");
     } catch (error: any) {
       console.error("Erro ao finalizar venda:", error);
-      toast.error("Erro ao finalizar a venda.");
+      const msgBackend =
+        typeof error.response?.data === "string" ? error.response.data : null;
+      toast.error(msgBackend || "Erro ao finalizar a venda.");
     } finally {
       setProcessando(false);
     }

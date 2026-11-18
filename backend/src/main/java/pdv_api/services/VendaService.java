@@ -2,10 +2,12 @@ package pdv_api.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import pdv_api.models.Venda;
 import pdv_api.models.Caixa;
-import pdv_api.repositories.VendaRepository;
+import pdv_api.models.Cliente;
+import pdv_api.models.Venda;
 import pdv_api.repositories.CaixaRepository;
+import pdv_api.repositories.ClienteRepository;
+import pdv_api.repositories.VendaRepository;
 
 import java.util.List;
 
@@ -17,6 +19,9 @@ public class VendaService {
 
     @Autowired
     private CaixaRepository caixaRepository;
+
+    @Autowired
+    private ClienteRepository clienteRepository;
 
     public List<Venda> listarTodos() {
         return vendaRepository.findAll();
@@ -32,7 +37,18 @@ public class VendaService {
             throw new RuntimeException("Operação negada: O caixa selecionado está " + caixa.getStatus());
         }
 
-        // 3. Se passou pela regra, salva a venda normalmente
+        venda.setCaixa(caixa);
+
+        // 3. Se um cliente foi informado na venda, busca e vincula a entidade do banco
+        if (venda.getCliente() != null && venda.getCliente().getId() != null) {
+            Cliente cliente = clienteRepository.findById(venda.getCliente().getId())
+                    .orElseThrow(() -> new RuntimeException("Erro: Cliente não encontrado."));
+            venda.setCliente(cliente);
+        } else {
+            venda.setCliente(null);
+        }
+
+        // 4. Salva a venda com o caixa e o cliente (se houver) devidamente vinculados
         return vendaRepository.save(venda);
     }
 }

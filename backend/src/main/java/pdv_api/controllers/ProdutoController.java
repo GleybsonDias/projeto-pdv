@@ -1,5 +1,6 @@
 package pdv_api.controllers;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -7,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 import pdv_api.dtos.ProdutoResponseDTO;
 import pdv_api.models.Produto;
 import pdv_api.services.ProdutoService;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 import java.util.Optional;
@@ -56,11 +59,16 @@ public class ProdutoController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        if (produtoService.buscarPorId(id).isPresent()) {
+    public ResponseEntity<?> deletar(@PathVariable Long id) {
+        try {
             produtoService.deletar(id);
-            return ResponseEntity.noContent().build(); // Retorna 204 No Content
+            return ResponseEntity.noContent().build();
+        } catch (DataIntegrityViolationException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Não é possível excluir este produto pois ele já possui vendas registradas.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao tentar excluir o produto.");
         }
-        return ResponseEntity.notFound().build();
     }
 }
